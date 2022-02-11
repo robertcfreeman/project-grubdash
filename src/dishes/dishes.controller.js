@@ -33,7 +33,48 @@ const create = (req, res) => {
   res.status(201).json({data: newDish});
 };
 
-const validateDishName = (req, res) => {
+const read = (req, res) => {
+  res.status(200).json({data: res.locals.dish});
+};
+
+const update = (req, res) => {
+  const dish = res.locals.dish;
+  const originalDish = dish;
+  const {data: {id = {}, name, description, price, image_url}} = req.body;
+  if (originalDish.id !== id) dish.id = id;
+  if (originalDish.name !== name) dish.name = name;
+  if (originalDish.description !== description) dish.description = description;
+  if (originalDish.price !== price) dish.price = price;
+  if (originalDish.image_url !== image_url) dish.image_url = image_url;
+
+  res.json({data: dish});
+}
+
+const dishExists = (req, res, next) => {
+  const {dishId} = req.params;
+  const foundDish = dishes.find(({id}) => id === dishId);
+  if (foundDish) {
+    res.locals.dish = foundDish;
+    return next();
+  };
+  return next({
+    status: 404,
+    message: `Dish does not exist: ${dishId}.`
+  });
+};
+
+const validateIdAgainstRoute = (req, res, next) => {
+  const {dishId} = req.params;
+  const {data: {id} = {}} = req.body;
+  if (id !== dishId) {
+    return next({
+      status: 404,
+      message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`
+    })
+  }
+}
+
+const validateDishName = (req, res, next) => {
   const {data: {name} = {}} = req.body;
   if (name) {
     return next();
@@ -44,7 +85,7 @@ const validateDishName = (req, res) => {
   })
 };
 
-const validateDishDescription = (req, res) => {
+const validateDishDescription = (req, res, next) => {
   const {data: {description} ={}} = req.body;
   if (description) {
     return next();
@@ -55,14 +96,14 @@ const validateDishDescription = (req, res) => {
   })
 };
 
-const validateDishPrice = (req, res) => {
+const validateDishPrice = (req, res, next) => {
   const {data: {price} ={}} = req.body;
   if (price === undefined) {
     return next({
       status: 400,
       message: "Dish must include a price"
     });
-  } else if (price <= 0 || parseInt(price)) {
+  } else if (price <= 0 || !parseInt(price)) {
     return next({
       status: 400,
       message: "Dish must have a price that is an integer greater than 0"
@@ -71,7 +112,7 @@ const validateDishPrice = (req, res) => {
   return next();
 };
 
-const validateDishImageURL = (req, res) => {
+const validateDishImageURL = (req, res, next) => {
   const {data: {image_url} ={}} = req.body;
   if (image_url) {
     return next();
@@ -91,4 +132,14 @@ module.exports = {
     validateDishImageURL,
     create,
   ],
+  read: [dishExists, read],
+  update: [
+    dishExists,
+    validateIdAgainstRoute,
+    validateDishName,
+    validateDishDescription,
+    validateDishPrice,
+    validateDishImageURL,
+    update,
+  ]
 }
