@@ -41,11 +41,11 @@ const update = (req, res) => {
   const dish = res.locals.dish;
   const originalDish = dish;
   const {data: {id = {}, name, description, price, image_url}} = req.body;
-  if (originalDish.id !== id) dish.id = id;
-  if (originalDish.name !== name) dish.name = name;
-  if (originalDish.description !== description) dish.description = description;
-  if (originalDish.price !== price) dish.price = price;
-  if (originalDish.image_url !== image_url) dish.image_url = image_url;
+  dish.id = id;
+  dish.name = name;
+  dish.description = description;
+  dish.price = price;
+  dish.image_url = image_url;
 
   res.json({data: dish});
 }
@@ -65,10 +65,12 @@ const dishExists = (req, res, next) => {
 
 const validateIdAgainstRoute = (req, res, next) => {
   const {dishId} = req.params;
-  const {data: {id} = {}} = req.body;
-  if (id !== dishId) {
+  const {data: {id}} = req.body;
+  if (!id || id === dishId) {
+    return next();
+  } else if (id !== dishId) {
     return next({
-      status: 404,
+      status: 400,
       message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`
     })
   }
@@ -103,7 +105,7 @@ const validateDishPrice = (req, res, next) => {
       status: 400,
       message: "Dish must include a price"
     });
-  } else if (price <= 0 || !parseInt(price)) {
+  } else if (price <= 0 || !Number.isInteger(price)) {
     return next({
       status: 400,
       message: "Dish must have a price that is an integer greater than 0"
